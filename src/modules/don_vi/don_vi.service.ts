@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateDonViDto } from './dto/create-don_vi.dto';
 import { UpdateDonViDto } from './dto/update-don_vi.dto';
 import { DonVi } from './entities/don_vi.entity';
@@ -38,5 +38,12 @@ export class DonViService {
      const donvi= await this.findOne(id);
     await this.donviRepository.remove(donvi);
     return { message: `Đã xóa thành công đơn vị ID = ${id}` };
+  }
+
+  async removeMany(ids: number[]): Promise<{ message: string }> {
+    const result = await this.donviRepository.delete({ id: In(ids) });
+    return {
+      message: `Đã xóa thành công ${result.affected ?? 0} đơn vị`,
+    };
   }
 }

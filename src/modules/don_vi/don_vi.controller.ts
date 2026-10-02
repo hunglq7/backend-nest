@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  BadRequestException,
   ParseIntPipe,
   UseGuards,
 } from "@nestjs/common";
@@ -36,6 +37,27 @@ export class DonViController {
   @Patch(":id")
   update(@Param("id") id: string, @Body() updateDonViDto: UpdateDonViDto) {
     return this.donViService.update(+id, updateDonViDto);
+  }
+
+  @Delete()
+  removeMany(@Body() body: unknown) {
+    const ids =
+      typeof body === "object" && body !== null && "ids" in body
+        ? body.ids
+        : undefined;
+
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      !ids.every(
+        (id: unknown) =>
+          typeof id === "number" && Number.isSafeInteger(id) && id > 0,
+      )
+    ) {
+      throw new BadRequestException("Danh sách ID đơn vị không hợp lệ");
+    }
+
+    return this.donViService.removeMany(ids);
   }
 
   @Delete(":id")
