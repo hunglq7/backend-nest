@@ -1,49 +1,53 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { CreateDonViDto } from './dto/create-don_vi.dto';
-import { UpdateDonViDto } from './dto/update-don_vi.dto';
-import { DonVi } from './entities/don_vi.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { CreateDonViDto } from "./dto/create-don_vi.dto";
+import { UpdateDonViDto } from "./dto/update-don_vi.dto";
+import { DonVi } from "./entities/don_vi.entity";
 @Injectable()
 export class DonViService {
-    constructor(
-        @InjectRepository(DonVi)
-        private readonly donviRepository: Repository<DonVi>,
-      ) {}  
- async create(createDonViDto: CreateDonViDto) {
-   const donvi = this.donviRepository.create(createDonViDto);
-    return await this.donviRepository.save(donvi);
+  constructor(
+    @InjectRepository(DonVi)
+    private readonly donviRepository: Repository<DonVi>,
+  ) {}
+  async create(createDonViDto: CreateDonViDto): Promise<{ message: string }> {
+    const donvi = this.donviRepository.create(createDonViDto);
+    await this.donviRepository.save(donvi);
+    return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
- async findAll():Promise<DonVi[]> {
+  async findAll(): Promise<DonVi[]> {
     return await this.donviRepository.find();
   }
 
- async findOne(id: number):Promise<DonVi> {
-      const donvi = await this.donviRepository.findOneBy({ id });
+  async findOne(id: number): Promise<DonVi> {
+    const donvi = await this.donviRepository.findOneBy({ id });
     if (!donvi) {
-      throw new NotFoundException(`Không tìm thấy đơn vị có ID = ${id}`);
+      throw new NotFoundException(`Không tìm thấy bản ghi có ID = ${id}`);
     }
     return donvi;
   }
 
- async update(id: number, updateDonViDto: UpdateDonViDto):Promise<DonVi> {
+  async update(
+    id: number,
+    updateDonViDto: UpdateDonViDto,
+  ): Promise<{ message: string }> {
     const donvi = await this.findOne(id);
     Object.assign(donvi, updateDonViDto);
-    return await this.donviRepository.save(donvi);
+    await this.donviRepository.save(donvi);
+    return { message: `Đã cập nhật thành công bản ghi ${donvi.name}` };
   }
-  
 
- async remove(id: number): Promise<{ message: string }> {
-     const donvi= await this.findOne(id);
+  async remove(id: number): Promise<{ message: string }> {
+    const donvi = await this.findOne(id);
     await this.donviRepository.remove(donvi);
-    return { message: `Đã xóa thành công đơn vị ID = ${id}` };
+    return { message: `Đã xóa thành công bản ghi ${donvi.name}` };
   }
 
   async removeMany(ids: number[]): Promise<{ message: string }> {
     const result = await this.donviRepository.delete({ id: In(ids) });
     return {
-      message: `Đã xóa thành công ${result.affected ?? 0} đơn vị`,
+      message: `Đã xóa thành công ${result.affected ?? 0} bản ghi`,
     };
   }
 }
