@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { Users } from "./entities/user.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { RolesService } from "../roles/roles.service";
 import * as bcrypt from "bcryptjs";
 import { unlink } from "fs/promises";
 import { basename, join } from "path";
@@ -13,6 +14,7 @@ export class UsersService {
   constructor(
     @InjectRepository(Users)
     private readonly userRepository: Repository<Users>,
+    private readonly rolesService: RolesService,
   ) {}
   async create(createUserDto: CreateUserDto, avatar?: string) {
     const { password, ...userData } = createUserDto;
@@ -22,7 +24,9 @@ export class UsersService {
       passwordHash: await bcrypt.hash(password, 12),
     });
     try {
-      return this.toPublicUser(await this.userRepository.save(user));
+      const savedUser = await this.userRepository.save(user);
+      await this.rolesService.assignDefaultRole(savedUser.id, savedUser.email);
+      return this.toPublicUser(savedUser);
     } catch (error) {
       await this.removeAvatarFile(avatar);
       throw error;
@@ -34,7 +38,10 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<Users> {
-    const user = await this.userRepository.findOneBy({ id });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: { userRoles: { role: true } },
+    });
     if (!user) {
       throw new NotFoundException(`Không tìm thấy sản phẩm có ID = ${id}`);
     }

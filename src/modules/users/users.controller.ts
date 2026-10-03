@@ -20,6 +20,7 @@ import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
+import { AdminGuard } from "../roles/guards/admin.guard";
 
 const avatarUpload = FileInterceptor("avatar", {
   storage: diskStorage({
@@ -63,6 +64,7 @@ export class UsersController {
   }
 
   @Post()
+  @UseGuards(AdminGuard)
   @UseInterceptors(avatarUpload)
   create(
     @Body() createUserDto: CreateUserDto,
@@ -75,16 +77,19 @@ export class UsersController {
   }
 
   @Get()
+  @UseGuards(AdminGuard)
   findAll() {
     return this.usersService.findAll();
   }
 
   @Get(":id")
+  @UseGuards(AdminGuard)
   findOne(@Param("id") id: string) {
     return this.usersService.findOne(+id);
   }
 
   @Patch(":id")
+  @UseGuards(AdminGuard)
   @UseInterceptors(avatarUpload)
   update(
     @Param("id") id: string,
@@ -99,6 +104,7 @@ export class UsersController {
   }
 
   @Delete(":id")
+  @UseGuards(AdminGuard)
   remove(@Param("id") id: string) {
     return this.usersService.remove(+id);
   }

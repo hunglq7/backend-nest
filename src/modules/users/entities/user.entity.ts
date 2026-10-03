@@ -3,8 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  OneToMany,
   UpdateDateColumn,
 } from "typeorm";
+import { UserRole } from "../../roles/entities/user-role.entity";
 
 @Entity("users")
 export class Users {
@@ -37,4 +39,7 @@ export class Users {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  userRoles: UserRole[];
 }
