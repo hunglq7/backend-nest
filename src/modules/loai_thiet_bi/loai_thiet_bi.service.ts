@@ -1,26 +1,49 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
 import { CreateLoaiThietBiDto } from './dto/create-loai_thiet_bi.dto';
 import { UpdateLoaiThietBiDto } from './dto/update-loai_thiet_bi.dto';
-
+import { LoaiThietBi } from "./entities/loai_thiet_bi.entity";
 @Injectable()
 export class LoaiThietBiService {
-  create(createLoaiThietBiDto: CreateLoaiThietBiDto) {
-    return 'This action adds a new loaiThietBi';
+  constructor(
+    @InjectRepository(LoaiThietBi)
+    private loaiThietBiRepository: Repository<LoaiThietBi>,
+  ) {}
+
+ async create(createLoaiThietBiDto: CreateLoaiThietBiDto):Promise<{ message: string }> {
+    const loaiThietBi = this.loaiThietBiRepository.create(createLoaiThietBiDto);
+     await this.loaiThietBiRepository.save(loaiThietBi);
+     return { message: `Loại thiết bị đã được thêm thành công` };
   }
 
-  findAll() {
-    return `This action returns all loaiThietBi`;
+ async findAll() {
+    return await this.loaiThietBiRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} loaiThietBi`;
+  async findOne(id: number): Promise<LoaiThietBi> {
+    const loaiThietBi = await this.loaiThietBiRepository.findOneBy({ id });
+    if (!loaiThietBi) {
+      throw new NotFoundException(`Không tìm thấy bản ghi có ID = ${id}`);
+    }
+    return loaiThietBi;
   }
 
-  update(id: number, updateLoaiThietBiDto: UpdateLoaiThietBiDto) {
-    return `This action updates a #${id} loaiThietBi`;
+  async update(id: number, updateLoaiThietBiDto: UpdateLoaiThietBiDto): Promise<{ message: string }> {
+    const loaiThietBi = await this.findOne(id);
+    await this.loaiThietBiRepository.update(id, { ...loaiThietBi, ...updateLoaiThietBiDto });
+    return { message: `Đã cập nhật thành công 1 bản ghi có ID = ${id}` };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} loaiThietBi`;
+  async remove(id: number): Promise<{ message: string }> {
+    const loaiThietBi = await this.findOne(id);
+    await this.loaiThietBiRepository.remove(loaiThietBi);
+    return { message: `Đã xóa thành công 1 bản ghi có ID = ${id}` };
+  }
+  async removeMany(ids: number[]): Promise<{ message: string }> {
+    const result = await this.loaiThietBiRepository.delete({ id: In(ids) });
+    return {
+      message: `Đã xóa thành công ${result.affected ?? 0} bản ghi`,
+    };
   }
 }

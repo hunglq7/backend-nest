@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, BadRequestException } from '@nestjs/common';
 import { LoaiThietBiService } from './loai_thiet_bi.service';
 import { CreateLoaiThietBiDto } from './dto/create-loai_thiet_bi.dto';
 import { UpdateLoaiThietBiDto } from './dto/update-loai_thiet_bi.dto';
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
-@Controller('loai-thiet-bi')
+@Controller('loaithietbis')
 @UseGuards(AccessTokenGuard)
 export class LoaiThietBiController {
   constructor(private readonly loaiThietBiService: LoaiThietBiService) {}
@@ -32,4 +32,25 @@ export class LoaiThietBiController {
   remove(@Param('id') id: string) {
     return this.loaiThietBiService.remove(+id);
   }
+
+   @Delete()
+    removeMany(@Body() body: unknown) {
+      const ids =
+        typeof body === "object" && body !== null && "ids" in body
+          ? body.ids
+          : undefined;
+  
+      if (
+        !Array.isArray(ids) ||
+        ids.length === 0 ||
+        !ids.every(
+          (id: unknown) =>
+            typeof id === "number" && Number.isSafeInteger(id) && id > 0,
+        )
+      ) {
+        throw new BadRequestException("Danh sách ID loại thiết bị không hợp lệ");
+      }
+  
+      return this.loaiThietBiService.removeMany(ids);
+    }
 }

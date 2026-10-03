@@ -8,6 +8,7 @@ import { DonViModule } from "./modules/don_vi/don_vi.module";
 import { ThietBiModule } from "./modules/thiet_bi/thiet_bi.module";
 import { KhuVucModule } from "./modules/khu_vuc/khu_vuc.module";
 import { RolesModule } from "./modules/roles/roles.module";
+import { LoaiThietBiModule } from "./modules/loai_thiet_bi/loai_thiet_bi.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,6 +35,7 @@ import { RolesModule } from "./modules/roles/roles.module";
     ThietBiModule,
     KhuVucModule,
     RolesModule,
+    LoaiThietBiModule,
   ],
 })
 export class AppModule {}
