@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, BadRequestException, Query } from '@nestjs/common';
 import { LoaiThietBiService } from './loai_thiet_bi.service';
 import { CreateLoaiThietBiDto } from './dto/create-loai_thiet_bi.dto';
 import { UpdateLoaiThietBiDto } from './dto/update-loai_thiet_bi.dto';
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 @Controller('loaithietbis')
 @UseGuards(AccessTokenGuard)
 export class LoaiThietBiController {
@@ -14,8 +15,8 @@ export class LoaiThietBiController {
   }
 
   @Get()
-  findAll() {
-    return this.loaiThietBiService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.loaiThietBiService.findAll(query);
   }
 
   @Get(':id')

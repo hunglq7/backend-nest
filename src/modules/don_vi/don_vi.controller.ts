@@ -9,10 +9,12 @@ import {
   BadRequestException,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { DonViService } from "./don_vi.service";
 import { CreateDonViDto } from "./dto/create-don_vi.dto";
 import { UpdateDonViDto } from "./dto/update-don_vi.dto";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 @Controller("donvis")
 @UseGuards(AccessTokenGuard)
@@ -25,8 +27,8 @@ export class DonViController {
   }
 
   @Get()
-  findAll() {
-    return this.donViService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.donViService.findAll(query);
   }
 
   @Get(":id")

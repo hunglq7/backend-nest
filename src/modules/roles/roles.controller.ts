@@ -8,7 +8,9 @@ import {
   Patch,
   Post,
   UseGuards,
+  Query,
 } from "@nestjs/common";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 import { AssignUserRoleDto } from "./dto/assign-user-role.dto";
 import { CreateRoleDto } from "./dto/create-role.dto";
@@ -22,8 +24,8 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get("roles")
-  findRoles() {
-    return this.rolesService.findRoles();
+  findRoles(@Query() query: PaginationQueryDto) {
+    return this.rolesService.findRoles(query);
   }
 
   @Post("roles")
@@ -45,8 +47,8 @@ export class RolesController {
   }
 
   @Get("user-roles")
-  findAssignments() {
-    return this.rolesService.findAssignments();
+  findAssignments(@Query() query: PaginationQueryDto) {
+    return this.rolesService.findAssignments(query);
   }
 
   @Post("user-roles")

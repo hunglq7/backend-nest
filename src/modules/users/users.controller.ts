@@ -10,6 +10,7 @@ import {
   Req,
   UploadedFile,
   UseInterceptors,
+  Query,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
@@ -21,6 +22,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 import { AdminGuard } from "../roles/guards/admin.guard";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 
 const avatarUpload = FileInterceptor("avatar", {
   storage: diskStorage({
@@ -78,8 +80,8 @@ export class UsersController {
 
   @Get()
   @UseGuards(AdminGuard)
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.usersService.findAll(query);
   }
 
   @Get(":id")

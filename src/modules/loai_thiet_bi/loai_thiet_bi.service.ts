@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { In, Like, Repository } from "typeorm";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { CreateLoaiThietBiDto } from './dto/create-loai_thiet_bi.dto';
 import { UpdateLoaiThietBiDto } from './dto/update-loai_thiet_bi.dto';
 import { LoaiThietBi } from "./entities/loai_thiet_bi.entity";
@@ -17,8 +18,27 @@ export class LoaiThietBiService {
      return { message: `Loại thiết bị đã được thêm thành công` };
   }
 
- async findAll() {
-    return await this.loaiThietBiRepository.find();
+ async findAll({ page, limit, search }: PaginationQueryDto) {
+    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const [data, total] = await this.loaiThietBiRepository.findAndCount({
+      where,
+      order: { id: "ASC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const totalPages = Math.ceil(total / limit);
+    const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const pageData =
+      effectivePage === page
+        ? data
+        : await this.loaiThietBiRepository.find({
+            where,
+            order: { id: "ASC" },
+            skip: (effectivePage - 1) * limit,
+            take: limit,
+          });
+
+    return { data: pageData, total, page: effectivePage, limit, totalPages };
   }
 
   async findOne(id: number): Promise<LoaiThietBi> {

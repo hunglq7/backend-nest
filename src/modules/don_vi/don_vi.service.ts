@@ -1,9 +1,19 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { In, Like, Repository } from "typeorm";
 import { CreateDonViDto } from "./dto/create-don_vi.dto";
 import { UpdateDonViDto } from "./dto/update-don_vi.dto";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { DonVi } from "./entities/don_vi.entity";
+
+export type PaginatedDonVi = {
+  data: DonVi[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
 @Injectable()
 export class DonViService {
   constructor(
@@ -16,8 +26,34 @@ export class DonViService {
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
-  async findAll(): Promise<DonVi[]> {
-    return await this.donviRepository.find();
+  async findAll(query: PaginationQueryDto): Promise<PaginatedDonVi> {
+    const { page, limit, search } = query;
+    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const findOptions = {
+      where,
+      order: { id: "ASC" as const },
+      skip: (page - 1) * limit,
+      take: limit,
+    };
+    const [data, total] = await this.donviRepository.findAndCount(findOptions);
+    const totalPages = Math.ceil(total / limit);
+    const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+
+    if (effectivePage !== page) {
+      const lastPageData = await this.donviRepository.find({
+        ...findOptions,
+        skip: (effectivePage - 1) * limit,
+      });
+      return {
+        data: lastPageData,
+        total,
+        page: effectivePage,
+        limit,
+        totalPages,
+      };
+    }
+
+    return { data, total, page: effectivePage, limit, totalPages };
   }
 
   async findOne(id: number): Promise<DonVi> {

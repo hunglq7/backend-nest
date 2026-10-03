@@ -5,13 +5,14 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Like, Repository } from "typeorm";
 import { Users } from "../users/entities/user.entity";
 import { AssignUserRoleDto } from "./dto/assign-user-role.dto";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
 import { Role } from "./entities/role.entity";
 import { UserRole } from "./entities/user-role.entity";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 
 const INITIAL_ADMIN_EMAIL = "hunglq7@gmail.com";
 
@@ -42,8 +43,26 @@ export class RolesService implements OnModuleInit {
     }
   }
 
-  async findRoles() {
-    return this.roleRepository.find({ order: { id: "ASC" } });
+  async findRoles({ page, limit, search }: PaginationQueryDto) {
+    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const [data, total] = await this.roleRepository.findAndCount({
+      where,
+      order: { id: "ASC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const totalPages = Math.ceil(total / limit);
+    const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const pageData =
+      effectivePage === page
+        ? data
+        : await this.roleRepository.find({
+            where,
+            order: { id: "ASC" },
+            skip: (effectivePage - 1) * limit,
+            take: limit,
+          });
+    return { data: pageData, total, page: effectivePage, limit, totalPages };
   }
 
   async createRole(dto: CreateRoleDto) {
@@ -74,11 +93,34 @@ export class RolesService implements OnModuleInit {
     return { message: "Đã xóa vai trò" };
   }
 
-  async findAssignments() {
-    return this.userRoleRepository.find({
-      relations: { user: true, role: true },
-      order: { id: "ASC" },
-    });
+  async findAssignments({ page, limit, search }: PaginationQueryDto) {
+    const query = this.userRoleRepository
+      .createQueryBuilder("assignment")
+      .leftJoinAndSelect("assignment.user", "user")
+      .leftJoinAndSelect("assignment.role", "role");
+    if (search) {
+      query.where(
+        "(user.name LIKE :search OR user.email LIKE :search OR role.name LIKE :search)",
+        { search: `%${search}%` },
+      );
+    }
+    const [data, total] = await query
+      .orderBy("assignment.id", "ASC")
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+    const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const pageData =
+      effectivePage === page
+        ? data
+        : await query
+            .clone()
+            .skip((effectivePage - 1) * limit)
+            .take(limit)
+            .getMany();
+
+    return { data: pageData, total, page: effectivePage, limit, totalPages };
   }
 
   async assignUserRole(dto: AssignUserRoleDto) {

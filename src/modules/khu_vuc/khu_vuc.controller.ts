@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { KhuVucService } from './khu_vuc.service';
 import { CreateKhuVucDto } from './dto/create-khu_vuc.dto';
 import { UpdateKhuVucDto } from './dto/update-khu_vuc.dto';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @Controller('khuvucs')
 export class KhuVucController {
@@ -22,8 +24,8 @@ export class KhuVucController {
   }
 
   @Get()
-  findAll() {
-    return this.khuVucService.findAll();
+  findAll(@Query() query: PaginationQueryDto) {
+    return this.khuVucService.findAll(query);
   }
 
   @Get(':id')

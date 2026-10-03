@@ -8,6 +8,7 @@ import { RolesService } from "../roles/roles.service";
 import * as bcrypt from "bcryptjs";
 import { unlink } from "fs/promises";
 import { basename, join } from "path";
+import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 
 @Injectable()
 export class UsersService {
@@ -33,8 +34,31 @@ export class UsersService {
     }
   }
 
-  async findAll() {
-    return await this.userRepository.find();
+  async findAll({ page, limit, search }: PaginationQueryDto) {
+    const query = this.userRepository.createQueryBuilder("user");
+    if (search) {
+      query.where(
+        "(user.name LIKE :search OR user.email LIKE :search OR user.phone LIKE :search)",
+        { search: `%${search}%` },
+      );
+    }
+    const [data, total] = await query
+      .orderBy("user.id", "ASC")
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+    const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const pageData =
+      effectivePage === page
+        ? data
+        : await query
+            .clone()
+            .skip((effectivePage - 1) * limit)
+            .take(limit)
+            .getMany();
+
+    return { data: pageData, total, page: effectivePage, limit, totalPages };
   }
 
   async findOne(id: number): Promise<Users> {
