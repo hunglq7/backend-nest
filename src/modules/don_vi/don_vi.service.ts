@@ -20,6 +20,7 @@ export class DonViService {
     @InjectRepository(DonVi)
     private readonly donviRepository: Repository<DonVi>,
   ) {}
+
   async create(createDonViDto: CreateDonViDto): Promise<{ message: string }> {
     const donvi = this.donviRepository.create(createDonViDto);
     await this.donviRepository.save(donvi);
