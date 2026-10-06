@@ -77,6 +77,9 @@ export class DonViService {
 
   async remove(id: number): Promise<{ message: string }> {
     const donvi = await this.findOne(id);
+    if (!donvi) {
+      throw new NotFoundException(`không xóa được bản ghi chó Id: ${id}`);
+    }
     await this.donviRepository.remove(donvi);
     return { message: `Đã xóa thành công bản ghi ${donvi.name}` };
   }

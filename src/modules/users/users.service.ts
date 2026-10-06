@@ -91,6 +91,23 @@ export class UsersService {
       throw error;
     }
   }
+
+  async updateAvatar(id: number, avatar: string) {
+    const user = await this.findOne(id);
+    const previousAvatar = user.avatar;
+    user.avatar = avatar;
+    try {
+      const savedUser = this.toPublicUser(await this.userRepository.save(user));
+      if (previousAvatar !== avatar) {
+        await this.removeAvatarFile(previousAvatar);
+      }
+      return savedUser;
+    } catch (error) {
+      await this.removeAvatarFile(avatar);
+      throw error;
+    }
+  }
+
   async remove(id: number): Promise<{ message: string }> {
     const user = await this.findOne(id);
     await this.userRepository.remove(user);

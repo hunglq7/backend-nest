@@ -10,6 +10,7 @@ import { KhuVucModule } from "./modules/khu_vuc/khu_vuc.module";
 import { RolesModule } from "./modules/roles/roles.module";
 import { LoaiThietBiModule } from "./modules/loai_thiet_bi/loai_thiet_bi.module";
 import { DonViTinhModule } from "./modules/don_vi_tinh/don_vi_tinh.module";
+import { ViTriLapDatModule } from "./modules/vi_tri_lap_dat/vi_tri_lap_dat.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -38,6 +39,7 @@ import { DonViTinhModule } from "./modules/don_vi_tinh/don_vi_tinh.module";
     RolesModule,
     LoaiThietBiModule,
     DonViTinhModule,
+    ViTriLapDatModule,
   ],
 })
 export class AppModule {}

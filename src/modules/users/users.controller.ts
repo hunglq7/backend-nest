@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -63,6 +64,21 @@ export class UsersController {
   @Get("me")
   me(@Req() request: AuthenticatedRequest) {
     return this.usersService.findOne(request.user.sub);
+  }
+
+  @Patch("me/avatar")
+  @UseInterceptors(avatarUpload)
+  updateMyAvatar(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile() avatar?: UploadedAvatar,
+  ) {
+    if (!avatar) {
+      throw new BadRequestException("Vui lòng chọn ảnh đại diện");
+    }
+    return this.usersService.updateAvatar(
+      request.user.sub,
+      `/image/${avatar.filename}`,
+    );
   }
 
   @Post()
