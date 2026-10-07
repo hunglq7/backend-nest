@@ -12,10 +12,6 @@ export class ThietBi {
 
   @Column()
   name: string;
-
-  @Column()
-  description: string;
-
   @CreateDateColumn()
   createdAt: Date;
 
