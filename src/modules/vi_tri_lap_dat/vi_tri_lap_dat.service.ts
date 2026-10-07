@@ -23,7 +23,8 @@ export class ViTriLapDatService {
   async create(
     createViTriLapDatDto: CreateViTriLapDatDto,
   ): Promise<{ message: string }> {
-    await this.vitrilapdatRepository.create(createViTriLapDatDto);
+    const res= this.vitrilapdatRepository.create(createViTriLapDatDto);
+    await this.vitrilapdatRepository.save(res)
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 

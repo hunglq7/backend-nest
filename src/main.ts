@@ -7,6 +7,19 @@ import { join } from "path";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const corsOrigins = (
+    process.env.CORS_ORIGINS ??
+    "http://localhost:3000,http://127.0.0.1:3000,http://192.168.10.8:3000"
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+  });
+
   const avatarDirectory = join(process.cwd(), "public", "image");
   mkdirSync(avatarDirectory, { recursive: true });
   app.useStaticAssets(avatarDirectory, { prefix: "/image/" });
