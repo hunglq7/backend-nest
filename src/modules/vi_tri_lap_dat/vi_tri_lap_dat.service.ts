@@ -23,14 +23,14 @@ export class ViTriLapDatService {
   async create(
     createViTriLapDatDto: CreateViTriLapDatDto,
   ): Promise<{ message: string }> {
-    const res= this.vitrilapdatRepository.create(createViTriLapDatDto);
-    await this.vitrilapdatRepository.save(res)
+    const res = this.vitrilapdatRepository.create(createViTriLapDatDto);
+    await this.vitrilapdatRepository.save(res);
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
   async findAll(query: PaginationQueryDto): Promise<PaginatedViTriLapDat> {
     const { page, limit, search } = query;
-    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const where = search ? { ten_vi_tri: Like(`%${search}%`) } : undefined;
     const findOptions = {
       where,
       order: { id: "ASC" as const },
@@ -72,7 +72,7 @@ export class ViTriLapDatService {
     const res = await this.findOne(id);
     Object.assign(res, updateViTriLapDatDto);
     await this.vitrilapdatRepository.save(res);
-    return { message: `Đã cập nhật thành công bản ghi ${res.name}` };
+    return { message: `Đã cập nhật thành công bản ghi ${res.ten_vi_tri}` };
   }
 
   async remove(id: number): Promise<{ message: string }> {

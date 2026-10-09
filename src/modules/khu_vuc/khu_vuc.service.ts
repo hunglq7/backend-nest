@@ -18,7 +18,7 @@ export class KhuVucService {
   }
 
   async findAll({ page, limit, search }: PaginationQueryDto) {
-    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const where = search ? { Tên_khu_vuc: Like(`%${search}%`) } : undefined;
     const [data, total] = await this.khuVucRepository.findAndCount({
       where,
       order: { id: "ASC" },
@@ -55,13 +55,13 @@ export class KhuVucService {
     const khuVuc = await this.findOne(id);
     Object.assign(khuVuc, updateKhuVucDto);
     await this.khuVucRepository.save(khuVuc);
-    return { message: `Đã cập nhật thành công bản ghi ${khuVuc.name}` };
+    return { message: `Đã cập nhật thành công bản ghi ${khuVuc.Tên_khu_vuc}` };
   }
 
   async remove(id: number): Promise<{ message: string }> {
     const khuVuc = await this.findOne(id);
     await this.khuVucRepository.remove(khuVuc);
-    return { message: `Đã xóa thành công bản ghi ${khuVuc.name}` };
+    return { message: `Đã xóa thành công bản ghi ${khuVuc.Tên_khu_vuc}` };
   }
 
   async removeMany(ids: number[]): Promise<{ message: string }> {

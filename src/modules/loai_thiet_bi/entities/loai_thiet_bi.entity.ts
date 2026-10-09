@@ -4,14 +4,14 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-} from 'typeorm';
-@Entity('loaithietbis')
+} from "typeorm";
+@Entity("loaithietbis")
 export class LoaiThietBi {
   @PrimaryGeneratedColumn()
   id: number;
 
-@Column({ type: 'varchar', length: 255 })
-  name: string;
+  @Column({ type: "varchar", length: 255 })
+  loai_thiet_bi: string;
 
   @CreateDateColumn()
   createdAt: Date;

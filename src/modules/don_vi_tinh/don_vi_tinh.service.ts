@@ -31,7 +31,7 @@ export class DonViTinhService {
 
   async findAll(query: PaginationQueryDto): Promise<PaginatedDonViTinh> {
     const { page, limit, search } = query;
-    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const where = search ? { ten_don_vi_tinh: Like(`%${search}%`) } : undefined;
     const findOptions = {
       where,
       order: { id: "ASC" as const },
@@ -71,13 +71,17 @@ export class DonViTinhService {
     const donViTinh = await this.findOne(id);
     Object.assign(donViTinh, updateDonViTinhDto);
     await this.donViTinhRepository.save(donViTinh);
-    return { message: `Đã cập nhật thành công bản ghi ${donViTinh.name}` };
+    return {
+      message: `Đã cập nhật thành công bản ghi ${donViTinh.ten_don_vi_tinh}`,
+    };
   }
 
   async remove(id: number): Promise<{ message: string }> {
     const donViTinh = await this.findOne(id);
     await this.donViTinhRepository.remove(donViTinh);
-    return { message: `Đã xóa thành công bản ghi ${donViTinh.name}` };
+    return {
+      message: `Đã xóa thành công bản ghi ${donViTinh.ten_don_vi_tinh}`,
+    };
   }
 
   async removeMany(ids: number[]): Promise<{ message: string }> {

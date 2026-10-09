@@ -10,7 +10,7 @@ export class DonViTinh {
   @PrimaryGeneratedColumn()
   id: number;
   @Column({ type: "varchar", length: 255 })
-  name: string;
+  ten_don_vi_tinh: string;
   @CreateDateColumn()
   createdAt: Date;
 

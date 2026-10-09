@@ -2,8 +2,8 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
-import { CreateLoaiThietBiDto } from './dto/create-loai_thiet_bi.dto';
-import { UpdateLoaiThietBiDto } from './dto/update-loai_thiet_bi.dto';
+import { CreateLoaiThietBiDto } from "./dto/create-loai_thiet_bi.dto";
+import { UpdateLoaiThietBiDto } from "./dto/update-loai_thiet_bi.dto";
 import { LoaiThietBi } from "./entities/loai_thiet_bi.entity";
 @Injectable()
 export class LoaiThietBiService {
@@ -12,14 +12,16 @@ export class LoaiThietBiService {
     private loaiThietBiRepository: Repository<LoaiThietBi>,
   ) {}
 
- async create(createLoaiThietBiDto: CreateLoaiThietBiDto):Promise<{ message: string }> {
+  async create(
+    createLoaiThietBiDto: CreateLoaiThietBiDto,
+  ): Promise<{ message: string }> {
     const loaiThietBi = this.loaiThietBiRepository.create(createLoaiThietBiDto);
-     await this.loaiThietBiRepository.save(loaiThietBi);
-     return { message: `Loại thiết bị đã được thêm thành công` };
+    await this.loaiThietBiRepository.save(loaiThietBi);
+    return { message: `Loại thiết bị đã được thêm thành công` };
   }
 
- async findAll({ page, limit, search }: PaginationQueryDto) {
-    const where = search ? { name: Like(`%${search}%`) } : undefined;
+  async findAll({ page, limit, search }: PaginationQueryDto) {
+    const where = search ? { loai_thiet_bi: Like(`%${search}%`) } : undefined;
     const [data, total] = await this.loaiThietBiRepository.findAndCount({
       where,
       order: { id: "ASC" },
@@ -49,9 +51,15 @@ export class LoaiThietBiService {
     return loaiThietBi;
   }
 
-  async update(id: number, updateLoaiThietBiDto: UpdateLoaiThietBiDto): Promise<{ message: string }> {
+  async update(
+    id: number,
+    updateLoaiThietBiDto: UpdateLoaiThietBiDto,
+  ): Promise<{ message: string }> {
     const loaiThietBi = await this.findOne(id);
-    await this.loaiThietBiRepository.update(id, { ...loaiThietBi, ...updateLoaiThietBiDto });
+    await this.loaiThietBiRepository.update(id, {
+      ...loaiThietBi,
+      ...updateLoaiThietBiDto,
+    });
     return { message: `Đã cập nhật thành công 1 bản ghi có ID = ${id}` };
   }
 

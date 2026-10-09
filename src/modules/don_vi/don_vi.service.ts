@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { CreateDonViDto } from "./dto/create-don_vi.dto";
@@ -14,6 +18,14 @@ export type PaginatedDonVi = {
   totalPages: number;
 };
 
+function isDuplicateEntryError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+
+  return error.code === "ER_DUP_ENTRY";
+}
+
 @Injectable()
 export class DonViService {
   constructor(
@@ -23,13 +35,20 @@ export class DonViService {
 
   async create(createDonViDto: CreateDonViDto): Promise<{ message: string }> {
     const donvi = this.donviRepository.create(createDonViDto);
-    await this.donviRepository.save(donvi);
+    try {
+      await this.donviRepository.save(donvi);
+    } catch (error) {
+      if (isDuplicateEntryError(error)) {
+        throw new ConflictException("Tên đơn vị đã tồn tại. Vui lòng nhập tên khác.");
+      }
+      throw error;
+    }
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
   async findAll(query: PaginationQueryDto): Promise<PaginatedDonVi> {
     const { page, limit, search } = query;
-    const where = search ? { name: Like(`%${search}%`) } : undefined;
+    const where = search ? { ten_don_vi: Like(`%${search}%`) } : undefined;
     const findOptions = {
       where,
       order: { id: "ASC" as const },
@@ -71,8 +90,15 @@ export class DonViService {
   ): Promise<{ message: string }> {
     const donvi = await this.findOne(id);
     Object.assign(donvi, updateDonViDto);
-    await this.donviRepository.save(donvi);
-    return { message: `Đã cập nhật thành công bản ghi ${donvi.name}` };
+    try {
+      await this.donviRepository.save(donvi);
+    } catch (error) {
+      if (isDuplicateEntryError(error)) {
+        throw new ConflictException("Tên đơn vị đã tồn tại. Vui lòng nhập tên khác.");
+      }
+      throw error;
+    }
+    return { message: `Đã cập nhật thành công bản ghi ${donvi.ten_don_vi}` };
   }
 
   async remove(id: number): Promise<{ message: string }> {
@@ -81,7 +107,7 @@ export class DonViService {
       throw new NotFoundException(`không xóa được bản ghi chó Id: ${id}`);
     }
     await this.donviRepository.remove(donvi);
-    return { message: `Đã xóa thành công bản ghi ${donvi.name}` };
+    return { message: `Đã xóa thành công bản ghi ${donvi.ten_don_vi}` };
   }
 
   async removeMany(ids: number[]): Promise<{ message: string }> {

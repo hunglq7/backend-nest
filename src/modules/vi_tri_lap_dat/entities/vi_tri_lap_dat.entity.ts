@@ -10,7 +10,7 @@ export class ViTriLapDat {
   @PrimaryGeneratedColumn()
   id: number;
   @Column({ type: "varchar", length: 255 })
-  name: string;
+  ten_vi_tri: string;
   @CreateDateColumn()
   createdAt: Date;
 
