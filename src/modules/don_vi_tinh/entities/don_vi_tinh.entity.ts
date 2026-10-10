@@ -9,7 +9,7 @@ import {
 export class DonViTinh {
   @PrimaryGeneratedColumn()
   id: number;
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255,unique:true })
   ten_don_vi_tinh: string;
   @CreateDateColumn()
   createdAt: Date;

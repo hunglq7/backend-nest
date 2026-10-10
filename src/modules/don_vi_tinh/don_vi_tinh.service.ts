@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException,ConflictException, } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { CreateDonViTinhDto } from "./dto/create-don_vi_tinh.dto";
@@ -13,7 +13,13 @@ export type PaginatedDonViTinh = {
   limit: number;
   totalPages: number;
 };
+function isDuplicateEntryError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
 
+  return error.code === "ER_DUP_ENTRY";
+}
 @Injectable()
 export class DonViTinhService {
   constructor(
@@ -25,7 +31,15 @@ export class DonViTinhService {
     createDonViTinhDto: CreateDonViTinhDto,
   ): Promise<{ message: string }> {
     const donViTinh = this.donViTinhRepository.create(createDonViTinhDto);
-    await this.donViTinhRepository.save(donViTinh);
+    try {
+      await this.donViTinhRepository.save(donViTinh);
+    } catch (error) {
+      if (isDuplicateEntryError(error)) {
+              throw new ConflictException("Tên đơn vị tính đã tồn tại. Vui lòng nhập tên khác.");
+            }
+            throw error;
+    }
+    
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
@@ -70,7 +84,15 @@ export class DonViTinhService {
   ): Promise<{ message: string }> {
     const donViTinh = await this.findOne(id);
     Object.assign(donViTinh, updateDonViTinhDto);
-    await this.donViTinhRepository.save(donViTinh);
+    try {
+      await this.donViTinhRepository.save(donViTinh);
+    } catch (error) {
+       if (isDuplicateEntryError(error)) {
+              throw new ConflictException("Tên đơn vị tính đã tồn tại. Vui lòng nhập tên khác.");
+            }
+            throw error;
+    }
+    
     return {
       message: `Đã cập nhật thành công bản ghi ${donViTinh.ten_don_vi_tinh}`,
     };
