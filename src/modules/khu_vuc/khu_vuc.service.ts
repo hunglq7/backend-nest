@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CreateKhuVucDto } from "./dto/create-khu_vuc.dto";
 import { UpdateKhuVucDto } from "./dto/update-khu_vuc.dto";
@@ -12,13 +12,49 @@ export class KhuVucService {
     private readonly khuVucRepository: Repository<KhuVuc>,
   ) {}
   async create(createKhuVucDto: CreateKhuVucDto): Promise<{ message: string }> {
+    await this.assertUniqueCode(createKhuVucDto.ma_khu_vuc);
     const khuVuc = this.khuVucRepository.create(createKhuVucDto);
-    await this.khuVucRepository.save(khuVuc);
+    try {
+      await this.khuVucRepository.save(khuVuc);
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) {
+        this.throwDuplicateCode();
+      }
+      throw error;
+    }
     return { message: "Đã thêm thành công 1 bản ghi" };
   }
 
+  private isDuplicateEntryError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    );
+  }
+
+  private throwDuplicateCode(): never {
+    throw new ConflictException({
+      field: "ma_khu_vuc",
+      message: "Mã khu vực đã tồn tại. Vui lòng nhập mã khác.",
+    });
+  }
+
+  private async assertUniqueCode(code: string, exceptId?: number) {
+    const existing = await this.khuVucRepository.findOneBy({
+      ma_khu_vuc: code,
+    });
+    if (existing && existing.id !== exceptId) this.throwDuplicateCode();
+  }
+
   async findAll({ page, limit, search }: PaginationQueryDto) {
-    const where = search ? { Tên_khu_vuc: Like(`%${search}%`) } : undefined;
+    const where = search
+      ? [
+          { ma_khu_vuc: Like(`%${search}%`) },
+          { Tên_khu_vuc: Like(`%${search}%`) },
+        ]
+      : undefined;
     const [data, total] = await this.khuVucRepository.findAndCount({
       where,
       order: { id: "ASC" },
@@ -54,7 +90,15 @@ export class KhuVucService {
   ): Promise<{ message: string }> {
     const khuVuc = await this.findOne(id);
     Object.assign(khuVuc, updateKhuVucDto);
-    await this.khuVucRepository.save(khuVuc);
+    if (updateKhuVucDto.ma_khu_vuc) {
+      await this.assertUniqueCode(updateKhuVucDto.ma_khu_vuc, id);
+    }
+    try {
+      await this.khuVucRepository.save(khuVuc);
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      throw error;
+    }
     return { message: `Đã cập nhật thành công bản ghi ${khuVuc.Tên_khu_vuc}` };
   }
 

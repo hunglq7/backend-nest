@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { CreateViTriLapDatDto } from "./dto/create-vi_tri_lap_dat.dto";
@@ -23,14 +23,48 @@ export class ViTriLapDatService {
   async create(
     createViTriLapDatDto: CreateViTriLapDatDto,
   ): Promise<{ message: string }> {
+    await this.assertUniqueCode(createViTriLapDatDto.ma_vi_tri_lap_dat);
     const res = this.vitrilapdatRepository.create(createViTriLapDatDto);
-    await this.vitrilapdatRepository.save(res);
+    try {
+      await this.vitrilapdatRepository.save(res);
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      throw error;
+    }
     return { message: "Thêm mới thành công 1 bản ghi" };
+  }
+
+  private isDuplicateEntryError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    );
+  }
+
+  private throwDuplicateCode(): never {
+    throw new ConflictException({
+      field: "ma_vi_tri_lap_dat",
+      message: "Mã vị trí lắp đặt đã tồn tại. Vui lòng nhập mã khác.",
+    });
+  }
+
+  private async assertUniqueCode(code: string, exceptId?: number) {
+    const existing = await this.vitrilapdatRepository.findOneBy({
+      ma_vi_tri_lap_dat: code,
+    });
+    if (existing && existing.id !== exceptId) this.throwDuplicateCode();
   }
 
   async findAll(query: PaginationQueryDto): Promise<PaginatedViTriLapDat> {
     const { page, limit, search } = query;
-    const where = search ? { ten_vi_tri: Like(`%${search}%`) } : undefined;
+    const where = search
+      ? [
+          { ma_vi_tri_lap_dat: Like(`%${search}%`) },
+          { ten_vi_tri: Like(`%${search}%`) },
+        ]
+      : undefined;
     const findOptions = {
       where,
       order: { id: "ASC" as const },
@@ -71,7 +105,15 @@ export class ViTriLapDatService {
   ): Promise<{ message: string }> {
     const res = await this.findOne(id);
     Object.assign(res, updateViTriLapDatDto);
-    await this.vitrilapdatRepository.save(res);
+    if (updateViTriLapDatDto.ma_vi_tri_lap_dat) {
+      await this.assertUniqueCode(updateViTriLapDatDto.ma_vi_tri_lap_dat, id);
+    }
+    try {
+      await this.vitrilapdatRepository.save(res);
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      throw error;
+    }
     return { message: `Đã cập nhật thành công bản ghi ${res.ten_vi_tri}` };
   }
 

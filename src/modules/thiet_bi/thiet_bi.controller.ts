@@ -40,29 +40,29 @@ export class ThietBiController {
     return this.thietBiService.update(+id, updateThietBiDto);
   }
 
+  @Delete("bulk")
+  removeMany(@Body() body: unknown) {
+    const ids =
+      typeof body === "object" && body !== null && "ids" in body
+        ? body.ids
+        : undefined;
+
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      !ids.every(
+        (id: unknown) =>
+          typeof id === "number" && Number.isSafeInteger(id) && id > 0,
+      )
+    ) {
+      throw new BadRequestException("Danh sách ID thiết bị không hợp lệ");
+    }
+
+    return this.thietBiService.removeMany(ids);
+  }
+
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.thietBiService.remove(+id);
   }
-
-    @Delete()
-    removeMany(@Body() body: unknown) {
-      const ids =
-        typeof body === "object" && body !== null && "ids" in body
-          ? body.ids
-          : undefined;
-  
-      if (
-        !Array.isArray(ids) ||
-        ids.length === 0 ||
-        !ids.every(
-          (id: unknown) =>
-            typeof id === "number" && Number.isSafeInteger(id) && id > 0,
-        )
-      ) {
-        throw new BadRequestException("Danh sách ID đơn vị không hợp lệ");
-      }
-  
-      return this.thietBiService.removeMany(ids);
-    }
 }

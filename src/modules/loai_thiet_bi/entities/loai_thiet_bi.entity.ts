@@ -10,6 +10,9 @@ export class LoaiThietBi {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: "char", length: 2, unique: true, nullable: true })
+  ma_loai_thiet_bi: string | null;
+
   @Column({ type: "varchar", length: 255 })
   loai_thiet_bi: string;
 

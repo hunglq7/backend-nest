@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
@@ -15,13 +15,47 @@ export class LoaiThietBiService {
   async create(
     createLoaiThietBiDto: CreateLoaiThietBiDto,
   ): Promise<{ message: string }> {
+    await this.assertUniqueCode(createLoaiThietBiDto.ma_loai_thiet_bi);
     const loaiThietBi = this.loaiThietBiRepository.create(createLoaiThietBiDto);
-    await this.loaiThietBiRepository.save(loaiThietBi);
+    try {
+      await this.loaiThietBiRepository.save(loaiThietBi);
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      throw error;
+    }
     return { message: `Loại thiết bị đã được thêm thành công` };
   }
 
+  private isDuplicateEntryError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    );
+  }
+
+  private throwDuplicateCode(): never {
+    throw new ConflictException({
+      field: "ma_loai_thiet_bi",
+      message: "Mã loại thiết bị đã tồn tại. Vui lòng nhập mã khác.",
+    });
+  }
+
+  private async assertUniqueCode(code: string, exceptId?: number) {
+    const existing = await this.loaiThietBiRepository.findOneBy({
+      ma_loai_thiet_bi: code,
+    });
+    if (existing && existing.id !== exceptId) this.throwDuplicateCode();
+  }
+
   async findAll({ page, limit, search }: PaginationQueryDto) {
-    const where = search ? { loai_thiet_bi: Like(`%${search}%`) } : undefined;
+    const where = search
+      ? [
+          { ma_loai_thiet_bi: Like(`%${search}%`) },
+          { loai_thiet_bi: Like(`%${search}%`) },
+        ]
+      : undefined;
     const [data, total] = await this.loaiThietBiRepository.findAndCount({
       where,
       order: { id: "ASC" },
@@ -56,10 +90,18 @@ export class LoaiThietBiService {
     updateLoaiThietBiDto: UpdateLoaiThietBiDto,
   ): Promise<{ message: string }> {
     const loaiThietBi = await this.findOne(id);
-    await this.loaiThietBiRepository.update(id, {
-      ...loaiThietBi,
-      ...updateLoaiThietBiDto,
-    });
+    if (updateLoaiThietBiDto.ma_loai_thiet_bi) {
+      await this.assertUniqueCode(updateLoaiThietBiDto.ma_loai_thiet_bi, id);
+    }
+    try {
+      await this.loaiThietBiRepository.update(id, {
+        ...loaiThietBi,
+        ...updateLoaiThietBiDto,
+      });
+    } catch (error) {
+      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      throw error;
+    }
     return { message: `Đã cập nhật thành công 1 bản ghi có ID = ${id}` };
   }
 

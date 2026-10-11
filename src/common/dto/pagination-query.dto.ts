@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsDateString,
   Max,
   MaxLength,
   Min,
@@ -29,4 +30,36 @@ export class PaginationQueryDto {
   @IsString()
   @MaxLength(255)
   search?: string;
+}
+
+export class HandoverQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  don_vi_lap_id?: number;
+}
+
+export class MoveQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  don_vi_id?: number;
 }

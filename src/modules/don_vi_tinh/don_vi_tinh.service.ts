@@ -20,6 +20,31 @@ function isDuplicateEntryError(error: unknown): boolean {
 
   return error.code === "ER_DUP_ENTRY";
 }
+
+function throwDuplicateField(field: "ma_don_vi_tinh" | "ten_don_vi_tinh"): never {
+  const isCode = field === "ma_don_vi_tinh";
+  const label = isCode ? "Mã đơn vị tính" : "Tên đơn vị tính";
+  throw new ConflictException({
+    field,
+    message: `${label} đã tồn tại. Vui lòng nhập ${isCode ? "mã" : "tên"} khác.`,
+  });
+}
+
+function getDuplicateField(
+  error: unknown,
+): "ma_don_vi_tinh" | "ten_don_vi_tinh" | null {
+  if (!isDuplicateEntryError(error) || typeof error !== "object" || error === null) {
+    return null;
+  }
+  const message =
+    "message" in error && typeof error.message === "string"
+      ? error.message.toLowerCase()
+      : "";
+  if (message.includes("ma_don_vi_tinh")) return "ma_don_vi_tinh";
+  if (message.includes("ten_don_vi_tinh")) return "ten_don_vi_tinh";
+  return null;
+}
+
 @Injectable()
 export class DonViTinhService {
   constructor(
@@ -30,22 +55,52 @@ export class DonViTinhService {
   async create(
     createDonViTinhDto: CreateDonViTinhDto,
   ): Promise<{ message: string }> {
+    await this.assertUniqueFields(createDonViTinhDto);
     const donViTinh = this.donViTinhRepository.create(createDonViTinhDto);
     try {
       await this.donViTinhRepository.save(donViTinh);
     } catch (error) {
       if (isDuplicateEntryError(error)) {
-              throw new ConflictException("Tên đơn vị tính đã tồn tại. Vui lòng nhập tên khác.");
-            }
-            throw error;
+        const field = getDuplicateField(error);
+        if (field) throwDuplicateField(field);
+        throw new ConflictException("Mã hoặc tên đơn vị tính đã tồn tại.");
+      }
+      throw error;
     }
     
     return { message: "Thêm mới thành công 1 bản ghi" };
   }
 
+  private async assertUniqueFields(
+    fields: Partial<Pick<DonViTinh, "ma_don_vi_tinh" | "ten_don_vi_tinh">>,
+    exceptId?: number,
+  ) {
+    if (fields.ma_don_vi_tinh) {
+      const existing = await this.donViTinhRepository.findOneBy({
+        ma_don_vi_tinh: fields.ma_don_vi_tinh,
+      });
+      if (existing && existing.id !== exceptId) {
+        throwDuplicateField("ma_don_vi_tinh");
+      }
+    }
+    if (fields.ten_don_vi_tinh) {
+      const existing = await this.donViTinhRepository.findOneBy({
+        ten_don_vi_tinh: fields.ten_don_vi_tinh,
+      });
+      if (existing && existing.id !== exceptId) {
+        throwDuplicateField("ten_don_vi_tinh");
+      }
+    }
+  }
+
   async findAll(query: PaginationQueryDto): Promise<PaginatedDonViTinh> {
     const { page, limit, search } = query;
-    const where = search ? { ten_don_vi_tinh: Like(`%${search}%`) } : undefined;
+    const where = search
+      ? [
+          { ma_don_vi_tinh: Like(`%${search}%`) },
+          { ten_don_vi_tinh: Like(`%${search}%`) },
+        ]
+      : undefined;
     const findOptions = {
       where,
       order: { id: "ASC" as const },
@@ -84,13 +139,16 @@ export class DonViTinhService {
   ): Promise<{ message: string }> {
     const donViTinh = await this.findOne(id);
     Object.assign(donViTinh, updateDonViTinhDto);
+    await this.assertUniqueFields(updateDonViTinhDto, id);
     try {
       await this.donViTinhRepository.save(donViTinh);
     } catch (error) {
-       if (isDuplicateEntryError(error)) {
-              throw new ConflictException("Tên đơn vị tính đã tồn tại. Vui lòng nhập tên khác.");
-            }
-            throw error;
+      if (isDuplicateEntryError(error)) {
+        const field = getDuplicateField(error);
+        if (field) throwDuplicateField(field);
+        throw new ConflictException("Mã hoặc tên đơn vị tính đã tồn tại.");
+      }
+      throw error;
     }
     
     return {

@@ -11,6 +11,8 @@ import { RolesModule } from "./modules/roles/roles.module";
 import { LoaiThietBiModule } from "./modules/loai_thiet_bi/loai_thiet_bi.module";
 import { DonViTinhModule } from "./modules/don_vi_tinh/don_vi_tinh.module";
 import { ViTriLapDatModule } from "./modules/vi_tri_lap_dat/vi_tri_lap_dat.module";
+import { DeviceCatalogsModule } from "./modules/device-catalogs/device-catalogs.module";
+import { DeviceWorkflowsModule } from "./modules/device-workflows/device-workflows.module";
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,6 +42,8 @@ import { ViTriLapDatModule } from "./modules/vi_tri_lap_dat/vi_tri_lap_dat.modul
     LoaiThietBiModule,
     DonViTinhModule,
     ViTriLapDatModule,
+    DeviceCatalogsModule,
+    DeviceWorkflowsModule,
   ],
 })
 export class AppModule {}
