@@ -1,8 +1,10 @@
 import {
   IsBoolean,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   MaxLength,
 } from "class-validator";
 
@@ -17,9 +19,14 @@ export class CreateThongSoKyThuatDto {
   @MaxLength(255)
   ten_thong_so: string;
 
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  cap_tren_id?: number | null;
+
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  gia_tri: string;
+  gia_tri?: string | null;
 
   @IsOptional()
   @IsString()

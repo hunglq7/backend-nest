@@ -14,7 +14,7 @@ import { ThietBiService } from "./thiet_bi.service";
 import { CreateThietBiDto } from "./dto/create-thiet_bi.dto";
 import { UpdateThietBiDto } from "./dto/update-thiet_bi.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
-import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
+import { ThietBiQueryDto } from "../../common/dto/pagination-query.dto";
 @UseGuards(AccessTokenGuard)
 @Controller("thietbis")
 export class ThietBiController {
@@ -26,7 +26,7 @@ export class ThietBiController {
   }
 
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: ThietBiQueryDto) {
     return this.thietBiService.findAll(query);
   }
 

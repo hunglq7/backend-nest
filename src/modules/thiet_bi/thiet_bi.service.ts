@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Like, Repository } from "typeorm";
+import { Brackets, In, Repository } from "typeorm";
 import { CreateThietBiDto } from "./dto/create-thiet_bi.dto";
 import { UpdateThietBiDto } from "./dto/update-thiet_bi.dto";
-import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
+import { ThietBiQueryDto } from "../../common/dto/pagination-query.dto";
 import { ThietBi } from "./entities/thiet_bi.entity";
 import { ThongSoKyThuat } from "./entities/thong-so-ky-thuat.entity";
 import { DeviceWorkflow } from "../device-workflows/entities/device-workflow.entity";
@@ -64,33 +64,104 @@ export class ThietBiService {
     return this.thietBiRepository.save(thietBi);
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedThietBi> {
+  async findAll(query: ThietBiQueryDto): Promise<PaginatedThietBi> {
     const { page, limit, search } = query;
-    const where = search
-      ? [
-          { name: Like(`%${search}%`) },
-          { ten_thiet_bi: Like(`%${search}%`) },
-          { ma_thiet_bi: Like(`%${search}%`) },
-          { so_quan_ly: Like(`%${search}%`) },
-        ]
-      : undefined;
-    const [data, total] = await this.thietBiRepository.findAndCount({
-      where,
-      order: { id: "ASC" },
-      skip: (page - 1) * limit,
-      take: limit,
+    const queryBuilder = this.thietBiRepository
+      .createQueryBuilder("device")
+      .leftJoin(
+        DonViTinh,
+        "unit",
+        "unit.id = device.don_vi_tinh_id",
+      )
+      .leftJoin(
+        LoaiThietBi,
+        "deviceType",
+        "deviceType.id = device.loai_thiet_bi_id",
+      )
+      .leftJoin(
+        DonVi,
+        "ownerOrganization",
+        "ownerOrganization.id = device.phong_chu_quan_id",
+      )
+      .leftJoin(DonVi, "organization", "organization.id = device.don_vi_id")
+      .leftJoin(
+        ViTriLapDat,
+        "location",
+        "location.id = device.vi_tri_lap_dat_id",
+      )
+      .leftJoin(KhuVuc, "area", "area.id = device.khu_vuc_id")
+      .leftJoin(
+        TrangThaiThietBi,
+        "status",
+        "status.id = device.trang_thai_thiet_bi_id",
+      );
+
+    if (search) {
+      queryBuilder.andWhere(
+        new Brackets((builder) => {
+          builder
+            .where("device.name LIKE :search", { search: `%${search}%` })
+            .orWhere("device.ten_thiet_bi LIKE :search", {
+              search: `%${search}%`,
+            })
+            .orWhere("device.ma_thiet_bi LIKE :search", {
+              search: `%${search}%`,
+            })
+            .orWhere("device.so_quan_ly LIKE :search", {
+              search: `%${search}%`,
+            });
+        }),
+      );
+    }
+
+    const filterExpressions: Partial<
+      Record<keyof ThietBiQueryDto, string>
+    > = {
+      filter_id: "CAST(device.id AS CHAR)",
+      filter_ma_thiet_bi: "device.ma_thiet_bi",
+      filter_locked:
+        "CASE WHEN device.locked = 1 THEN 'Có' ELSE 'Không' END",
+      filter_ten_thiet_bi: "COALESCE(device.ten_thiet_bi, device.name)",
+      filter_don_vi_tinh_id: "unit.ten_don_vi_tinh",
+      filter_loai_thiet_bi_id: "deviceType.loai_thiet_bi",
+      filter_nuoc_san_xuat: "device.nuoc_san_xuat",
+      filter_so_quan_ly: "device.so_quan_ly",
+      filter_ngay_dua_vao_su_dung:
+        "CAST(device.ngay_dua_vao_su_dung AS CHAR)",
+      filter_tai_san:
+        "CASE WHEN device.tai_san = 1 THEN 'Có' ELSE 'Không' END",
+      filter_phong_chu_quan_id: "ownerOrganization.ten_don_vi",
+      filter_don_vi_id: "organization.ten_don_vi",
+      filter_vi_tri_lap_dat_id: "location.ten_vi_tri",
+      filter_khu_vuc_id: "area.Tên_khu_vuc",
+      filter_trang_thai_thiet_bi_id: "status.name",
+      filter_nhiem_vu: "device.nhiem_vu",
+      filter_ghi_chu: "device.ghi_chu",
+    };
+
+    Object.entries(filterExpressions).forEach(([filterName, expression]) => {
+      const filterValue = query[filterName as keyof ThietBiQueryDto];
+      if (expression && typeof filterValue === "string" && filterValue) {
+        queryBuilder.andWhere(`${expression} LIKE :${filterName}`, {
+          [filterName]: `%${filterValue}%`,
+        });
+      }
     });
+
+    const [data, total] = await queryBuilder
+      .orderBy("device.id", "ASC")
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
     const totalPages = Math.ceil(total / limit);
     const effectivePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
     const pageData =
       effectivePage === page
         ? data
-        : await this.thietBiRepository.find({
-            where,
-            order: { id: "ASC" },
-            skip: (effectivePage - 1) * limit,
-            take: limit,
-          });
+        : await queryBuilder
+            .skip((effectivePage - 1) * limit)
+            .take(limit)
+            .getMany();
     return {
       data: pageData.map((device) => this.toApi(device)),
       total,

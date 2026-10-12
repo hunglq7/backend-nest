@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -21,37 +22,70 @@ export class ThongSoKyThuatService {
 
   async findAll(deviceId: number, query: PaginationQueryDto) {
     const device = await this.assertDevice(deviceId);
-    const where = query.search
-      ? [
-          { thiet_bi_id: deviceId, ma_thong_so: Like(`%${query.search}%`) },
-          { thiet_bi_id: deviceId, ten_thong_so: Like(`%${query.search}%`) },
-          { thiet_bi_id: deviceId, gia_tri: Like(`%${query.search}%`) },
-        ]
-      : { thiet_bi_id: deviceId };
-    const [data, total] = await this.specs.findAndCount({
-      where,
+    const allRows = await this.specs.find({
+      where: { thiet_bi_id: deviceId },
       order: { id: "ASC" },
-      skip: (query.page - 1) * query.limit,
-      take: query.limit,
     });
+    const rowsById = new Map(allRows.map((row) => [row.id, row]));
+    const matches = query.search
+      ? await this.specs.find({
+          where: [
+            { thiet_bi_id: deviceId, ma_thong_so: Like(`%${query.search}%`) },
+            { thiet_bi_id: deviceId, ten_thong_so: Like(`%${query.search}%`) },
+            { thiet_bi_id: deviceId, gia_tri: Like(`%${query.search}%`) },
+          ],
+          order: { id: "ASC" },
+        })
+      : allRows;
+    const matchingRootIds = new Set<number>();
+    matches.forEach((match) => {
+      let current = match;
+      const visited = new Set<number>();
+      while (current.cap_tren_id !== null) {
+        if (visited.has(current.id)) break;
+        visited.add(current.id);
+        const parent = rowsById.get(current.cap_tren_id);
+        if (!parent) break;
+        current = parent;
+      }
+      matchingRootIds.add(current.id);
+    });
+    const roots = allRows.filter(
+      (row) =>
+        (row.cap_tren_id === null || !rowsById.has(row.cap_tren_id)) &&
+        matchingRootIds.has(row.id),
+    );
+    const total = roots.length;
     const totalPages = Math.ceil(total / query.limit);
     const page = totalPages ? Math.min(query.page, totalPages) : 1;
-    const pageData =
-      page === query.page
-        ? data
-        : await this.specs.find({
-            where,
-            order: { id: "ASC" },
-            skip: (page - 1) * query.limit,
-            take: query.limit,
-          });
+    const pageRoots = roots.slice((page - 1) * query.limit, page * query.limit);
+    const pageData: ThongSoKyThuat[] = [];
+    const childrenByParent = new Map<number, ThongSoKyThuat[]>();
+    allRows.forEach((row) => {
+      if (row.cap_tren_id === null) return;
+      const children = childrenByParent.get(row.cap_tren_id) ?? [];
+      children.push(row);
+      childrenByParent.set(row.cap_tren_id, children);
+    });
+    const includedIds = new Set<number>();
+    const appendTree = (row: ThongSoKyThuat) => {
+      if (includedIds.has(row.id)) return;
+      includedIds.add(row.id);
+      pageData.push(row);
+      (childrenByParent.get(row.id) ?? []).forEach(appendTree);
+    };
+    pageRoots.forEach(appendTree);
     for (const row of pageData) row.ma_thiet_bi = device.ma_thiet_bi;
+    await this.includeParentNames(pageData);
     return { data: pageData, total, page, limit: query.limit, totalPages };
   }
 
   async create(deviceId: number, dto: CreateThongSoKyThuatDto) {
     const device = await this.assertDevice(deviceId);
     this.assertDeviceUnlocked(device);
+    if (dto.cap_tren_id !== undefined && dto.cap_tren_id !== null) {
+      await this.assertParent(deviceId, dto.cap_tren_id);
+    }
     const { don_vi, ...spec } = dto;
     return this.specs.save(
       this.specs.create({
@@ -67,6 +101,7 @@ export class ThongSoKyThuatService {
     const device = await this.assertDevice(deviceId);
     const row = await this.findSpecification(deviceId, specId);
     row.ma_thiet_bi = device.ma_thiet_bi;
+    await this.includeParentNames([row]);
     return row;
   }
 
@@ -76,6 +111,9 @@ export class ThongSoKyThuatService {
     const row = await this.findSpecification(deviceId, specId);
     if (row.locked && !(dto.locked === false && Object.keys(dto).length === 1)) {
       throw new ConflictException("Locked specifications cannot be edited");
+    }
+    if (dto.cap_tren_id !== undefined && dto.cap_tren_id !== null) {
+      await this.assertParent(deviceId, dto.cap_tren_id, specId);
     }
     const { don_vi, ...spec } = dto;
     Object.assign(row, spec);
@@ -132,5 +170,64 @@ export class ThongSoKyThuatService {
     const row = await this.specs.findOneBy({ id: specId, thiet_bi_id: deviceId });
     if (!row) throw new NotFoundException(`Specification ${specId} was not found`);
     return row;
+  }
+
+  private async assertParent(
+    deviceId: number,
+    parentId: number,
+    specificationId?: number,
+  ) {
+    let currentId: number | null = parentId;
+    const visited = new Set<number>();
+
+    while (currentId !== null) {
+      if (currentId === specificationId) {
+        throw new BadRequestException(
+          "A specification cannot be its own parent or an ancestor of its parent",
+        );
+      }
+      if (visited.has(currentId)) {
+        throw new BadRequestException("The parent specification hierarchy is invalid");
+      }
+      visited.add(currentId);
+
+      const current = await this.specs.findOne({
+        select: { id: true, cap_tren_id: true },
+        where: { id: currentId, thiet_bi_id: deviceId },
+      });
+      if (!current) {
+        throw new BadRequestException(
+          "The parent specification must belong to the same equipment",
+        );
+      }
+      currentId = current.cap_tren_id;
+    }
+  }
+
+  private async includeParentNames(rows: ThongSoKyThuat[]) {
+    const parentIds = Array.from(
+      new Set(
+        rows
+          .map((row) => row.cap_tren_id)
+          .filter((id): id is number => id !== null && id !== undefined),
+      ),
+    );
+    if (parentIds.length === 0) {
+      rows.forEach((row) => {
+        row.cap_tren_ten_thong_so = null;
+      });
+      return;
+    }
+
+    const parents = await this.specs.find({
+      select: { id: true, ten_thong_so: true },
+      where: { id: In(parentIds) },
+    });
+    const names = new Map(parents.map((parent) => [parent.id, parent.ten_thong_so]));
+    rows.forEach((row) => {
+      row.cap_tren_ten_thong_so = row.cap_tren_id
+        ? names.get(row.cap_tren_id) ?? null
+        : null;
+    });
   }
 }

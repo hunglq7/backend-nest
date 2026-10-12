@@ -20,8 +20,13 @@ export class ThongSoKyThuat {
   @Column({ type: "varchar", length: 255 })
   ten_thong_so: string;
 
-  @Column({ type: "text" })
-  gia_tri: string;
+  @Column({ type: "int", nullable: true })
+  cap_tren_id: number | null;
+
+  cap_tren_ten_thong_so?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  gia_tri: string | null;
 
   @Column({ type: "varchar", length: 100, nullable: true })
   don_vi_tinh: string | null;
