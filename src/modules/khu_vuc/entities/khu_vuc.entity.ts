@@ -13,7 +13,7 @@ export class KhuVuc {
   ma_khu_vuc: string | null;
 
   @Column({ type: "varchar", length: 255 })
-  Tên_khu_vuc: string;
+  ten_khu_vuc: string;
   @CreateDateColumn()
   createdAt: Date;
 

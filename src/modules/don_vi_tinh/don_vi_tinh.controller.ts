@@ -11,8 +11,8 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { DonViTinhService } from "./don_vi_tinh.service";
-import { CreateDonViTinhDto } from "./dto/create-don_vi_tinh.dto";
-import { UpdateDonViTinhDto } from "./dto/update-don_vi_tinh.dto";
+import { CreateDonViTinhDto } from "./dto/create_don_vi_tinh.dto";
+import { UpdateDonViTinhDto } from "./dto/update_don_vi_tinh.dto";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { AccessTokenGuard } from "../auth/guards/access-token.guard";
 

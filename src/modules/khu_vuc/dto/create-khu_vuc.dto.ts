@@ -7,5 +7,5 @@ export class CreateKhuVucDto {
 
   @IsNotEmpty({ message: "Tên khu vực không được trống" })
   @IsString()
-  Tên_khu_vuc: string;
+  ten_khu_vuc: string;
 }

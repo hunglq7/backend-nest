@@ -9,6 +9,10 @@ import { CreateDonViDto } from "./dto/create-don_vi.dto";
 import { UpdateDonViDto } from "./dto/update-don_vi.dto";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { DonVi } from "./entities/don_vi.entity";
+import {
+  assertUniqueFields,
+  isDuplicateEntryError,
+} from "../../common/utils/unique-validator.util";
 
 export type PaginatedDonVi = {
   data: DonVi[];
@@ -18,39 +22,6 @@ export type PaginatedDonVi = {
   totalPages: number;
 };
 
-type DonViField = "ma_don_vi" | "ten_don_vi";
-
-function isDuplicateEntryError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return false;
-  }
-  return error.code === "ER_DUP_ENTRY";
-}
-
-function getDuplicateField(error: unknown): DonViField | null {
-  if (!isDuplicateEntryError(error) || typeof error !== "object" || error === null) {
-    return null;
-  }
-
-  const message = "message" in error && typeof error.message === "string"
-    ? error.message.toLowerCase()
-    : "";
-
-  if (message.includes("ma_don_vi")) return "ma_don_vi";
-  if (message.includes("ten_don_vi") || message.includes("uq_ten_don_vi")) {
-    return "ten_don_vi";
-  }
-  return null;
-}
-
-function throwDuplicateField(field: DonViField): never {
-  const label = field === "ma_don_vi" ? "Mã đơn vị" : "Tên đơn vị";
-  throw new ConflictException({
-    field,
-    message: `${label} đã tồn tại. Vui lòng nhập ${label.toLowerCase()} khác.`,
-  });
-}
-
 @Injectable()
 export class DonViService {
   constructor(
@@ -58,43 +29,31 @@ export class DonViService {
     private readonly donviRepository: Repository<DonVi>,
   ) {}
 
+  // Định nghĩa tên nhãn hiển thị tiếng Việt cho từng trường
+  private readonly fieldLabels: Partial<Record<keyof DonVi, string>> = {
+    ma_don_vi: "Mã đơn vị",
+    ten_don_vi: "Tên đơn vị",
+  };
+
   async create(createDonViDto: CreateDonViDto): Promise<{ message: string }> {
-    await this.assertUniqueFields(createDonViDto);
+    // Kiểm tra trùng lặp thông qua hàm dùng chung
+    await assertUniqueFields(
+      this.donviRepository,
+      createDonViDto,
+      undefined,
+      this.fieldLabels,
+    );
+
     const donvi = this.donviRepository.create(createDonViDto);
     try {
       await this.donviRepository.save(donvi);
     } catch (error) {
-      const field = getDuplicateField(error);
-      if (field) throwDuplicateField(field);
       if (isDuplicateEntryError(error)) {
         throw new ConflictException("Dữ liệu bị trùng lặp.");
       }
       throw error;
     }
     return { message: "Thêm mới thành công 1 bản ghi" };
-  }
-
-  private async assertUniqueFields(
-    fields: Partial<Pick<DonVi, DonViField>>,
-    exceptId?: number,
-  ): Promise<void> {
-    if (fields.ma_don_vi) {
-      const existing = await this.donviRepository.findOneBy({
-        ma_don_vi: fields.ma_don_vi,
-      });
-      if (existing && existing.id !== exceptId) {
-        throwDuplicateField("ma_don_vi");
-      }
-    }
-
-    if (fields.ten_don_vi) {
-      const existing = await this.donviRepository.findOneBy({
-        ten_don_vi: fields.ten_don_vi,
-      });
-      if (existing && existing.id !== exceptId) {
-        throwDuplicateField("ten_don_vi");
-      }
-    }
   }
 
   async findAll(query: PaginationQueryDto): Promise<PaginatedDonVi> {
@@ -141,12 +100,18 @@ export class DonViService {
   ): Promise<{ message: string }> {
     const donvi = await this.findOne(id);
     Object.assign(donvi, updateDonViDto);
-    await this.assertUniqueFields(updateDonViDto, id);
+
+    // Kiểm tra trùng lặp ngoại trừ ID hiện tại
+    await assertUniqueFields(
+      this.donviRepository,
+      updateDonViDto,
+      id,
+      this.fieldLabels,
+    );
+
     try {
       await this.donviRepository.save(donvi);
     } catch (error) {
-      const field = getDuplicateField(error);
-      if (field) throwDuplicateField(field);
       if (isDuplicateEntryError(error)) {
         throw new ConflictException("Dữ liệu bị trùng lặp.");
       }
@@ -157,9 +122,6 @@ export class DonViService {
 
   async remove(id: number): Promise<{ message: string }> {
     const donvi = await this.findOne(id);
-    if (!donvi) {
-      throw new NotFoundException(`không xóa được bản ghi chó Id: ${id}`);
-    }
     await this.donviRepository.remove(donvi);
     return { message: `Đã xóa thành công bản ghi ${donvi.ten_don_vi}` };
   }

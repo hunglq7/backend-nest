@@ -1,10 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Like, Repository } from "typeorm";
 import { PaginationQueryDto } from "../../common/dto/pagination-query.dto";
 import { CreateLoaiThietBiDto } from "./dto/create-loai_thiet_bi.dto";
 import { UpdateLoaiThietBiDto } from "./dto/update-loai_thiet_bi.dto";
 import { LoaiThietBi } from "./entities/loai_thiet_bi.entity";
+import {
+  assertUniqueFields,
+  isDuplicateEntryError,
+} from "../../common/utils/unique-validator.util";
+
 @Injectable()
 export class LoaiThietBiService {
   constructor(
@@ -12,41 +21,34 @@ export class LoaiThietBiService {
     private loaiThietBiRepository: Repository<LoaiThietBi>,
   ) {}
 
+  // Định nghĩa tên nhãn hiển thị tiếng Việt khi bị trùng dữ liệu
+  private readonly fieldLabels: Partial<Record<keyof LoaiThietBi, string>> = {
+    ma_loai_thiet_bi: "Mã loại thiết bị",
+    // Nếu có thêm trường cần check unique (ví dụ loai_thiet_bi), bạn có thể thêm vào đây:
+    loai_thiet_bi: "Tên loại thiết bị",
+  };
+
   async create(
     createLoaiThietBiDto: CreateLoaiThietBiDto,
   ): Promise<{ message: string }> {
-    await this.assertUniqueCode(createLoaiThietBiDto.ma_loai_thiet_bi);
+    // Kiểm tra trùng lặp trước khi lưu bằng hàm dùng chung
+    await assertUniqueFields(
+      this.loaiThietBiRepository,
+      createLoaiThietBiDto,
+      undefined,
+      this.fieldLabels,
+    );
+
     const loaiThietBi = this.loaiThietBiRepository.create(createLoaiThietBiDto);
     try {
       await this.loaiThietBiRepository.save(loaiThietBi);
     } catch (error) {
-      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      if (isDuplicateEntryError(error)) {
+        throw new ConflictException("Dữ liệu bị trùng lặp.");
+      }
       throw error;
     }
     return { message: `Loại thiết bị đã được thêm thành công` };
-  }
-
-  private isDuplicateEntryError(error: unknown): boolean {
-    return (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ER_DUP_ENTRY"
-    );
-  }
-
-  private throwDuplicateCode(): never {
-    throw new ConflictException({
-      field: "ma_loai_thiet_bi",
-      message: "Mã loại thiết bị đã tồn tại. Vui lòng nhập mã khác.",
-    });
-  }
-
-  private async assertUniqueCode(code: string, exceptId?: number) {
-    const existing = await this.loaiThietBiRepository.findOneBy({
-      ma_loai_thiet_bi: code,
-    });
-    if (existing && existing.id !== exceptId) this.throwDuplicateCode();
   }
 
   async findAll({ page, limit, search }: PaginationQueryDto) {
@@ -90,16 +92,24 @@ export class LoaiThietBiService {
     updateLoaiThietBiDto: UpdateLoaiThietBiDto,
   ): Promise<{ message: string }> {
     const loaiThietBi = await this.findOne(id);
-    if (updateLoaiThietBiDto.ma_loai_thiet_bi) {
-      await this.assertUniqueCode(updateLoaiThietBiDto.ma_loai_thiet_bi, id);
-    }
+
+    // Kiểm tra trùng lặp ngoại trừ ID hiện tại bằng hàm dùng chung
+    await assertUniqueFields(
+      this.loaiThietBiRepository,
+      updateLoaiThietBiDto,
+      id,
+      this.fieldLabels,
+    );
+
     try {
       await this.loaiThietBiRepository.update(id, {
         ...loaiThietBi,
         ...updateLoaiThietBiDto,
       });
     } catch (error) {
-      if (this.isDuplicateEntryError(error)) this.throwDuplicateCode();
+      if (isDuplicateEntryError(error)) {
+        throw new ConflictException("Dữ liệu bị trùng lặp.");
+      }
       throw error;
     }
     return { message: `Đã cập nhật thành công 1 bản ghi có ID = ${id}` };
@@ -110,6 +120,7 @@ export class LoaiThietBiService {
     await this.loaiThietBiRepository.remove(loaiThietBi);
     return { message: `Đã xóa thành công 1 bản ghi có ID = ${id}` };
   }
+
   async removeMany(ids: number[]): Promise<{ message: string }> {
     const result = await this.loaiThietBiRepository.delete({ id: In(ids) });
     return {
